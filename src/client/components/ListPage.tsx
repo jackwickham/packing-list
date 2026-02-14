@@ -157,8 +157,12 @@ export default function ListPage() {
   const handleTitleSave = async () => {
     const trimmed = titleDraft.trim();
     if (trimmed && trimmed !== list.name) {
-      await api.updateList(listId, { name: trimmed });
-      await fetchData();
+      try {
+        await api.updateList(listId, { name: trimmed });
+        await fetchData();
+      } catch (err) {
+        alert(err instanceof Error ? err.message : "Failed to update title");
+      }
     }
     setEditingTitle(false);
   };
@@ -170,35 +174,55 @@ export default function ListPage() {
 
   const handleDuplicate = async () => {
     setShowActions(false);
-    const newList = await api.duplicateList(listId);
-    navigate(`/lists/${newList.id}`);
+    try {
+      const newList = await api.duplicateList(listId);
+      navigate(`/lists/${newList.id}`);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to duplicate list");
+    }
   };
 
   const handleSaveAsTemplate = async () => {
     setShowActions(false);
-    const newList = await api.duplicateList(
-      listId,
-      `${list.name} (template)`,
-      true,
-    );
-    navigate(`/lists/${newList.id}`);
+    try {
+      const newList = await api.duplicateList(
+        listId,
+        `${list.name} (template)`,
+        true,
+      );
+      navigate(`/lists/${newList.id}`);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to save as template");
+    }
   };
 
   const handleArchive = async () => {
-    await api.updateList(listId, { is_archived: 1 });
-    await fetchData();
+    try {
+      await api.updateList(listId, { is_archived: 1 });
+      await fetchData();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to archive list");
+    }
   };
 
   const handleUnarchive = async () => {
-    await api.updateList(listId, { is_archived: 0 });
-    await fetchData();
+    try {
+      await api.updateList(listId, { is_archived: 0 });
+      await fetchData();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to unarchive list");
+    }
   };
 
   const handleDeleteList = async () => {
     setShowActions(false);
     if (!confirm("Delete this list permanently?")) return;
-    await api.deleteList(listId);
-    navigate("/");
+    try {
+      await api.deleteList(listId);
+      navigate("/");
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to delete list");
+    }
   };
 
   const handleAddCategory = async () => {

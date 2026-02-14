@@ -43,6 +43,7 @@ db.exec(`
   );
 
   CREATE INDEX IF NOT EXISTS idx_items_list_id ON items(list_id);
+  CREATE INDEX IF NOT EXISTS idx_items_category_id ON items(category_id);
   CREATE INDEX IF NOT EXISTS idx_items_text ON items(text);
 `);
 

@@ -38,21 +38,22 @@ export default function HomePage() {
   }, [showArchived, fetchArchived]);
 
   const handleArchive = async (id: number) => {
-    await api.updateList(id, { is_archived: 1 });
-    fetchLists();
+    try {
+      await api.updateList(id, { is_archived: 1 });
+      fetchLists();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to archive list");
+    }
   };
 
   const handleUnarchive = async (id: number) => {
-    await api.updateList(id, { is_archived: 0 });
-    fetchLists();
-    fetchArchived();
-  };
-
-  const handleDelete = async (id: number) => {
-    if (!confirm("Delete this list permanently?")) return;
-    await api.deleteList(id);
-    fetchLists();
-    fetchArchived();
+    try {
+      await api.updateList(id, { is_archived: 0 });
+      fetchLists();
+      fetchArchived();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to unarchive list");
+    }
   };
 
   const formatDate = (dateStr: string) => {

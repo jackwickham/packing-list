@@ -18,22 +18,30 @@ export default function ItemRow({ item, onUpdate, onChecked }: Props) {
   }, [editing]);
 
   const handleToggle = async () => {
-    await api.updateItem(item.id, { is_checked: item.is_checked ? 0 : 1 });
-    if (!item.is_checked && onChecked) {
-      onChecked(item.id);
+    try {
+      await api.updateItem(item.id, { is_checked: item.is_checked ? 0 : 1 });
+      if (!item.is_checked && onChecked) {
+        onChecked(item.id);
+      }
+      onUpdate();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to update item");
     }
-    onUpdate();
   };
 
   const handleSave = async () => {
     const trimmed = textDraft.trim();
-    if (trimmed === '') {
-      await api.deleteItem(item.id);
-    } else if (trimmed !== item.text) {
-      await api.updateItem(item.id, { text: trimmed });
+    try {
+      if (trimmed === '') {
+        await api.deleteItem(item.id);
+      } else if (trimmed !== item.text) {
+        await api.updateItem(item.id, { text: trimmed });
+      }
+      setEditing(false);
+      onUpdate();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to save item");
     }
-    setEditing(false);
-    onUpdate();
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -47,8 +55,12 @@ export default function ItemRow({ item, onUpdate, onChecked }: Props) {
   };
 
   const handleDelete = async () => {
-    await api.deleteItem(item.id);
-    onUpdate();
+    try {
+      await api.deleteItem(item.id);
+      onUpdate();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to delete item");
+    }
   };
 
   return (
