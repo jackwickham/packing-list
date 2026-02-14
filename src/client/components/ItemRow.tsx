@@ -83,7 +83,7 @@ export default function ItemRow({ item, onUpdate, onChecked }: Props) {
 
       <button
         onClick={handleDelete}
-        className="text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity text-xl leading-none px-1.5 py-0.5 cursor-pointer rounded hover:bg-red-50"
+        className="text-gray-400 hover:text-red-500 text-xl leading-none px-1.5 py-0.5 cursor-pointer rounded hover:bg-red-50"
         title="Delete item"
       >
         &times;
