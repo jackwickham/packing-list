@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none" stroke-width="8" stroke-linecap="round" stroke-linejoin="round">
+  <style>
+    svg { stroke: #1e293b; }
+    @media (prefers-color-scheme: dark) { svg { stroke: #e2e8f0; } }
+  </style>
+  <rect x="8" y="8" width="84" height="84" rx="12" />
+  <polyline points="26 52 42 68 74 32" stroke-width="10" />
+</svg>
