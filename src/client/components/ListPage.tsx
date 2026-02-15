@@ -1,5 +1,18 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useNavigate } from "react-router";
+import {
+  DndContext,
+  DragOverlay,
+  pointerWithin,
+  PointerSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+  type DragStartEvent,
+  type DragEndEvent,
+  type DragOverEvent,
+} from "@dnd-kit/core";
+import { arrayMove } from "@dnd-kit/sortable";
 import type { PackingList, Item, Category } from "../types";
 import * as api from "../api";
 import CategorySection from "./CategorySection";
@@ -24,11 +37,24 @@ export default function ListPage() {
   const [newCategoryName, setNewCategoryName] = useState("");
   const [notFound, setNotFound] = useState(false);
   const [undo, setUndo] = useState<UndoState | null>(null);
+  const [activeId, setActiveId] = useState<number | null>(null);
   const titleRef = useRef<HTMLInputElement>(null);
   const actionsRef = useRef<HTMLDivElement>(null);
   const catInputRef = useRef<HTMLInputElement>(null);
+  // Track original category before drag for cross-category moves
+  const dragSourceCategory = useRef<number | null>(null);
+  // Snapshot category order at drag start so layout stays stable
+  const dragCategoryOrder = useRef<Category[]>([]);
 
   const listId = Number(id);
+
+  const pointerSensor = useSensor(PointerSensor, {
+    activationConstraint: { distance: 8 },
+  });
+  const touchSensor = useSensor(TouchSensor, {
+    activationConstraint: { delay: 200, tolerance: 5 },
+  });
+  const sensors = useSensors(pointerSensor, touchSensor);
 
   const fetchData = useCallback(async () => {
     try {
@@ -97,6 +123,170 @@ export default function ListPage() {
     fetchData();
   };
 
+  // Drag-and-drop handlers
+  function handleDragStart(event: DragStartEvent) {
+    const itemId = Number(event.active.id);
+    const item = list?.items?.find((i) => i.id === itemId);
+    dragSourceCategory.current = item?.category_id ?? null;
+
+    // Snapshot category order: populated first, then empty
+    const usedCatIds = new Set(
+      (list?.items || []).filter((i) => !i.is_checked).map((i) => i.category_id),
+    );
+    dragCategoryOrder.current = [
+      ...categories.filter((c) => usedCatIds.has(c.id)),
+      ...categories.filter((c) => !usedCatIds.has(c.id)),
+    ];
+
+    setActiveId(itemId);
+  }
+
+  function handleDragOver(event: DragOverEvent) {
+    const { active, over } = event;
+    if (!over || !list) return;
+
+    const activeItemId = Number(active.id);
+    const overId = String(over.id);
+
+    const activeItem = list.items.find((i) => i.id === activeItemId);
+    if (!activeItem) return;
+
+    let overCategoryId: number;
+    if (overId.startsWith("category-")) {
+      overCategoryId = Number(overId.replace("category-", ""));
+    } else {
+      const overItem = list.items.find((i) => i.id === Number(overId));
+      if (!overItem) return;
+      overCategoryId = overItem.category_id;
+    }
+
+    if (activeItem.category_id !== overCategoryId) {
+      setList((prev) => {
+        if (!prev) return prev;
+        // Compute a sort_order that places item at end of target category
+        const maxSort = prev.items
+          .filter((i) => i.category_id === overCategoryId && i.id !== activeItemId)
+          .reduce((max, i) => Math.max(max, i.sort_order), -1);
+        const newItems = prev.items.map((i) =>
+          i.id === activeItemId
+            ? { ...i, category_id: overCategoryId, sort_order: maxSort + 1 }
+            : i,
+        );
+        return { ...prev, items: newItems };
+      });
+    }
+  }
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    const sourceCategoryId = dragSourceCategory.current;
+    setActiveId(null);
+    dragSourceCategory.current = null;
+
+    if (!over || !list) return;
+
+    const activeItemId = Number(active.id);
+    const overId = String(over.id);
+
+    // Determine target category and over-item
+    let targetCategoryId: number;
+    let overItemId: number | null = null;
+
+    if (overId.startsWith("category-")) {
+      targetCategoryId = Number(overId.replace("category-", ""));
+    } else {
+      overItemId = Number(overId);
+      const overItem = list.items.find((i) => i.id === overItemId);
+      if (!overItem) return;
+      targetCategoryId = overItem.category_id;
+    }
+
+    const activeItem = list.items.find((i) => i.id === activeItemId);
+    if (!activeItem) return;
+
+    const isSameCategory = sourceCategoryId === targetCategoryId;
+    let reorderedItems: Item[];
+
+    if (isSameCategory && overItemId !== null) {
+      // Within-category reorder: use arrayMove to match SortableContext visual
+      const categoryItems = list.items
+        .filter((i) => !i.is_checked && i.category_id === targetCategoryId)
+        .sort((a, b) => a.sort_order - b.sort_order);
+
+      const oldIndex = categoryItems.findIndex((i) => i.id === activeItemId);
+      const newIndex = categoryItems.findIndex((i) => i.id === overItemId);
+
+      if (oldIndex === -1 || newIndex === -1 || oldIndex === newIndex) return;
+
+      reorderedItems = arrayMove(categoryItems, oldIndex, newIndex);
+    } else {
+      // Cross-category: remove from source, insert at over item's position
+      const allUnchecked = list.items.filter(
+        (i) => !i.is_checked && i.id !== activeItemId,
+      );
+      const targetItems = allUnchecked
+        .filter((i) => i.category_id === targetCategoryId)
+        .sort((a, b) => a.sort_order - b.sort_order);
+
+      let insertIndex: number;
+      if (overItemId !== null) {
+        const idx = targetItems.findIndex((i) => i.id === overItemId);
+        insertIndex = idx >= 0 ? idx : targetItems.length;
+      } else {
+        insertIndex = targetItems.length;
+      }
+
+      reorderedItems = [...targetItems];
+      reorderedItems.splice(insertIndex, 0, activeItem);
+    }
+
+    // Build payload for target category
+    const targetPayload = reorderedItems.map((item, i) => ({
+      id: item.id,
+      category_id: targetCategoryId,
+      sort_order: i,
+    }));
+
+    // If cross-category, also renumber the source category
+    let fullPayload = [...targetPayload];
+    if (!isSameCategory && sourceCategoryId !== null) {
+      const allUnchecked = list.items.filter(
+        (i) => !i.is_checked && i.id !== activeItemId,
+      );
+      const sourceItems = allUnchecked
+        .filter((i) => i.category_id === sourceCategoryId)
+        .sort((a, b) => a.sort_order - b.sort_order);
+      const sourcePayload = sourceItems.map((item, i) => ({
+        id: item.id,
+        category_id: sourceCategoryId,
+        sort_order: i,
+      }));
+      fullPayload = [...fullPayload, ...sourcePayload];
+    }
+
+    // Optimistic update
+    setList((prev) => {
+      if (!prev) return prev;
+      const updateMap = new Map(fullPayload.map((r) => [r.id, r]));
+      const newItems = prev.items.map((i) => {
+        const upd = updateMap.get(i.id);
+        return upd
+          ? { ...i, category_id: upd.category_id, sort_order: upd.sort_order }
+          : i;
+      });
+      return { ...prev, items: newItems };
+    });
+
+    // Persist
+    api.reorderItems(listId, fullPayload).catch(() => fetchData());
+  }
+
+  function handleDragCancel() {
+    setActiveId(null);
+    dragSourceCategory.current = null;
+    fetchData();
+  }
+
   if (notFound) {
     return (
       <div className="text-center py-12">
@@ -129,6 +319,10 @@ export default function ListPage() {
     arr.push(item);
     uncheckedByCategory.set(item.category_id, arr);
   }
+  // Sort each category's items by sort_order
+  for (const [, catItems] of uncheckedByCategory) {
+    catItems.sort((a, b) => a.sort_order - b.sort_order);
+  }
 
   // Group checked items by category
   const checkedByCategory = new Map<number, Item[]>();
@@ -153,6 +347,8 @@ export default function ListPage() {
   // Empty categories (no items at all)
   const allUsedIds = new Set([...uncheckedCategoryIds, ...checkedCategoryIds]);
   const emptyCategories = categories.filter((c) => !allUsedIds.has(c.id));
+
+  const activeItem = activeId ? items.find((i) => i.id === activeId) : null;
 
   const handleTitleSave = async () => {
     const trimmed = titleDraft.trim();
@@ -352,36 +548,72 @@ export default function ListPage() {
         </div>
       )}
 
-      {/* Unchecked items by category */}
-      {categoriesWithUnchecked.map((cat) => (
-        <CategorySection
-          key={cat.id}
-          category={cat}
-          items={uncheckedByCategory.get(cat.id) || []}
-          listId={listId}
-          onUpdate={fetchData}
-          onItemChecked={handleItemChecked}
-        />
-      ))}
+      <DndContext
+        sensors={sensors}
+        collisionDetection={pointerWithin}
+        onDragStart={handleDragStart}
+        onDragOver={handleDragOver}
+        onDragEnd={handleDragEnd}
+        onDragCancel={handleDragCancel}
+      >
+        {activeId !== null ? (
+          /* During drag: show ALL categories in snapshotted order for stable layout */
+          dragCategoryOrder.current.map((cat) => {
+            const catItems = uncheckedByCategory.get(cat.id) || [];
+            return (
+              <CategorySection
+                key={cat.id}
+                category={cat}
+                items={catItems}
+                listId={listId}
+                onUpdate={fetchData}
+                onItemChecked={handleItemChecked}
+                isDragActive
+              />
+            );
+          })
+        ) : (
+          /* Normal: populated categories, then empty ones collapsed */
+          <>
+            {categoriesWithUnchecked.map((cat) => (
+              <CategorySection
+                key={cat.id}
+                category={cat}
+                items={uncheckedByCategory.get(cat.id) || []}
+                listId={listId}
+                onUpdate={fetchData}
+                onItemChecked={handleItemChecked}
+              />
+            ))}
+            {emptyCategories.length > 0 && (
+              <details className="mb-4">
+                <summary className="text-xs text-gray-400 cursor-pointer hover:text-gray-600 mb-2">
+                  More categories ({emptyCategories.length})
+                </summary>
+                {emptyCategories.map((cat) => (
+                  <CategorySection
+                    key={cat.id}
+                    category={cat}
+                    items={[]}
+                    listId={listId}
+                    onUpdate={fetchData}
+                    onItemChecked={handleItemChecked}
+                  />
+                ))}
+              </details>
+            )}
+          </>
+        )}
 
-      {/* Empty categories (collapsed, for adding items) */}
-      {emptyCategories.length > 0 && (
-        <details className="mb-4">
-          <summary className="text-xs text-gray-400 cursor-pointer hover:text-gray-600 mb-2">
-            More categories ({emptyCategories.length})
-          </summary>
-          {emptyCategories.map((cat) => (
-            <CategorySection
-              key={cat.id}
-              category={cat}
-              items={[]}
-              listId={listId}
-              onUpdate={fetchData}
-              onItemChecked={handleItemChecked}
-            />
-          ))}
-        </details>
-      )}
+        {/* Drag overlay */}
+        <DragOverlay dropAnimation={null}>
+          {activeItem ? (
+            <div className="bg-white rounded-lg shadow-lg border border-primary/30 px-4 py-2 opacity-90">
+              <span className="text-base text-gray-700">{activeItem.text}</span>
+            </div>
+          ) : null}
+        </DragOverlay>
+      </DndContext>
 
       {/* Add category */}
       {addingCategory ? (

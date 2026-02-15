@@ -15,6 +15,7 @@ Frontend:
 - React 19 + TypeScript, bundled with Vite 6
 - Tailwind CSS v4 (via `@tailwindcss/vite` plugin, no config file, use `@theme {}` in CSS)
 - React Router v7 (import from `react-router`, not `react-router-dom`)
+- @dnd-kit (core + sortable + utilities) for drag-and-drop item reordering
 
 ## Code structure
 
@@ -25,7 +26,7 @@ src/server/              Express API server
   db.ts                  SQLite init, schema creation, category seeding
   routes/
     lists.ts             CRUD + duplicate + create-from-templates
-    items.ts             CRUD, touches parent list updated_at
+    items.ts             CRUD + batch reorder, touches parent list updated_at
     categories.ts        CRUD with deletion guard
     suggestions.ts       Prefix-match autocomplete endpoint
 
@@ -37,10 +38,10 @@ src/client/              React SPA
   index.css              Tailwind imports + theme customization
   components/
     HomePage.tsx          Active lists, templates, archived lists toggle
-    ListPage.tsx          Full list view with editing, checked items section, undo toast
+    ListPage.tsx          Full list view with editing, drag-and-drop reorder, undo toast
     NewListModal.tsx      Create blank or from template(s)
-    ItemRow.tsx           Checkbox + inline text edit + delete
-    CategorySection.tsx   Groups items by category + add input
+    ItemRow.tsx           Checkbox + inline text edit + delete + drag handle
+    CategorySection.tsx   Groups items by category + add input + droppable zone
     AutocompleteInput.tsx Debounced suggestion dropdown with keyboard nav
 ```
 
@@ -51,6 +52,7 @@ src/client/              React SPA
 - Express 5 uses path-to-regexp v8: wildcard routes must be `/{*path}` not `*`
 - All item mutations touch the parent list's `updated_at`
 - Suggestions use prefix match (`LIKE 'text%'`), exclude items already in the current list, ordered by frequency
+- Items are reorderable via drag-and-drop within and across categories (uses `sort_order` column, batch `PUT /lists/:id/items/reorder` endpoint)
 
 ## DB schema
 

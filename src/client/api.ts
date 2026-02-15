@@ -63,6 +63,12 @@ export const updateItem = (id: number, data: Partial<Pick<Item, 'text' | 'is_che
 export const deleteItem = (id: number) =>
   request<void>(`/items/${id}`, { method: 'DELETE' });
 
+export const reorderItems = (listId: number, items: Array<{ id: number; category_id: number; sort_order: number }>) =>
+  request<{ ok: boolean }>(`/lists/${listId}/items/reorder`, {
+    method: 'PUT',
+    body: JSON.stringify({ items }),
+  });
+
 // Categories
 export const getCategories = () =>
   request<Category[]>('/categories');

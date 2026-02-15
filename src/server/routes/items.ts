@@ -85,6 +85,42 @@ router.patch('/items/:id', (req, res) => {
   res.json(updated);
 });
 
+router.put('/lists/:listId/items/reorder', (req, res) => {
+  const list = db.prepare('SELECT id FROM lists WHERE id = ?').get(req.params.listId);
+  if (!list) {
+    res.status(404).json({ error: 'List not found' });
+    return;
+  }
+
+  const { items } = req.body;
+  if (!Array.isArray(items) || items.length === 0) {
+    res.status(400).json({ error: 'items array is required' });
+    return;
+  }
+
+  for (const item of items) {
+    if (typeof item.id !== 'number' || typeof item.category_id !== 'number' || typeof item.sort_order !== 'number') {
+      res.status(400).json({ error: 'Each item must have id, category_id, and sort_order as numbers' });
+      return;
+    }
+  }
+
+  const update = db.prepare(
+    'UPDATE items SET category_id = ?, sort_order = ? WHERE id = ? AND list_id = ?'
+  );
+
+  const reorder = db.transaction((itemUpdates: { id: number; category_id: number; sort_order: number }[]) => {
+    for (const item of itemUpdates) {
+      update.run(item.category_id, item.sort_order, item.id, Number(req.params.listId));
+    }
+  });
+
+  reorder(items);
+  db.prepare("UPDATE lists SET updated_at = datetime('now') WHERE id = ?").run(req.params.listId);
+
+  res.json({ ok: true });
+});
+
 router.delete('/items/:id', (req, res) => {
   const item = db.prepare('SELECT list_id FROM items WHERE id = ?').get(req.params.id) as { list_id: number } | undefined;
   if (!item) {

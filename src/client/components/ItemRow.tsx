@@ -1,4 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
+import { useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import type { Item } from '../types';
 import * as api from '../api';
 
@@ -6,12 +8,31 @@ interface Props {
   item: Item;
   onUpdate: () => void;
   onChecked?: (itemId: number) => void;
+  isDraggable?: boolean;
 }
 
-export default function ItemRow({ item, onUpdate, onChecked }: Props) {
+export default function ItemRow({ item, onUpdate, onChecked, isDraggable = false }: Props) {
   const [editing, setEditing] = useState(false);
   const [textDraft, setTextDraft] = useState(item.text);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
+    id: item.id,
+    disabled: !isDraggable,
+  });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.3 : 1,
+  };
 
   useEffect(() => {
     if (editing) inputRef.current?.focus();
@@ -64,7 +85,33 @@ export default function ItemRow({ item, onUpdate, onChecked }: Props) {
   };
 
   return (
-    <div className="flex items-center gap-3 py-2 px-2 group hover:bg-gray-50 rounded-lg -mx-2">
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`flex items-center gap-3 py-2 px-2 group hover:bg-gray-50 rounded-lg -mx-2 ${
+        isDragging ? 'z-10 relative' : ''
+      }`}
+    >
+      {isDraggable && (
+        <button
+          type="button"
+          className="text-gray-300 hover:text-gray-500 cursor-grab active:cursor-grabbing touch-none shrink-0 px-0.5"
+          {...attributes}
+          {...listeners}
+          tabIndex={-1}
+          aria-label="Drag to reorder"
+        >
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+            <circle cx="5" cy="3" r="1.5" />
+            <circle cx="11" cy="3" r="1.5" />
+            <circle cx="5" cy="8" r="1.5" />
+            <circle cx="11" cy="8" r="1.5" />
+            <circle cx="5" cy="13" r="1.5" />
+            <circle cx="11" cy="13" r="1.5" />
+          </svg>
+        </button>
+      )}
+
       <input
         type="checkbox"
         checked={!!item.is_checked}
