@@ -11,8 +11,7 @@ interface Props {
 
 export default function NewListModal({ open, onClose, templates, onCreated }: Props) {
   const [name, setName] = useState('');
-  const [isTemplate, setIsTemplate] = useState(false);
-  const [mode, setMode] = useState<'blank' | 'from-templates'>('blank');
+  const [mode, setMode] = useState<'list' | 'template'>('list');
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [submitting, setSubmitting] = useState(false);
 
@@ -24,7 +23,7 @@ export default function NewListModal({ open, onClose, templates, onCreated }: Pr
     );
   };
 
-  const canSubmit = name.trim() !== '' && (mode === 'blank' || selectedIds.length > 0) && !submitting;
+  const canSubmit = name.trim() !== '' && !submitting;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,14 +31,13 @@ export default function NewListModal({ open, onClose, templates, onCreated }: Pr
     setSubmitting(true);
     try {
       let list: PackingList;
-      if (mode === 'from-templates') {
+      if (mode === 'list' && selectedIds.length > 0) {
         list = await api.createListFromTemplates(name.trim(), selectedIds);
       } else {
-        list = await api.createList(name.trim(), isTemplate);
+        list = await api.createList(name.trim(), mode === 'template');
       }
       setName('');
-      setMode('blank');
-      setIsTemplate(false);
+      setMode('list');
       setSelectedIds([]);
       onClose();
       onCreated(list);
@@ -60,7 +58,32 @@ export default function NewListModal({ open, onClose, templates, onCreated }: Pr
       <div className="bg-white rounded-xl shadow-lg w-full max-w-md">
         <form onSubmit={handleSubmit}>
           <div className="p-5">
-            <h2 className="text-lg font-semibold text-gray-800 mb-4">New List</h2>
+            <h2 className="text-lg font-semibold text-gray-800 mb-4">Create New</h2>
+
+            <div className="flex rounded-lg bg-gray-100 p-1 mb-4">
+              <button
+                type="button"
+                onClick={() => { setMode('list'); setSelectedIds([]); }}
+                className={`flex-1 py-1.5 text-sm rounded-md font-medium transition-colors cursor-pointer ${
+                  mode === 'list'
+                    ? 'bg-white text-gray-800 shadow-sm'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                List
+              </button>
+              <button
+                type="button"
+                onClick={() => { setMode('template'); setSelectedIds([]); }}
+                className={`flex-1 py-1.5 text-sm rounded-md font-medium transition-colors cursor-pointer ${
+                  mode === 'template'
+                    ? 'bg-white text-gray-800 shadow-sm'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                Template
+              </button>
+            </div>
 
             <label className="block text-sm font-medium text-gray-600 mb-1">Name</label>
             <input
@@ -68,70 +91,30 @@ export default function NewListModal({ open, onClose, templates, onCreated }: Pr
               value={name}
               onChange={e => setName(e.target.value)}
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary mb-4"
-              placeholder="e.g. Beach Trip"
+              placeholder={mode === 'list' ? 'e.g. Beach Trip' : 'e.g. Weekend Camping'}
               autoFocus
             />
 
-            <div className="flex gap-2 mb-4">
-              <button
-                type="button"
-                onClick={() => setMode('blank')}
-                className={`flex-1 py-2 text-sm rounded-lg border cursor-pointer transition-colors ${
-                  mode === 'blank'
-                    ? 'border-primary bg-primary/5 text-primary font-medium'
-                    : 'border-gray-200 text-gray-500 hover:border-gray-300'
-                }`}
-              >
-                Blank
-              </button>
-              <button
-                type="button"
-                onClick={() => setMode('from-templates')}
-                className={`flex-1 py-2 text-sm rounded-lg border cursor-pointer transition-colors ${
-                  mode === 'from-templates'
-                    ? 'border-primary bg-primary/5 text-primary font-medium'
-                    : 'border-gray-200 text-gray-500 hover:border-gray-300'
-                }`}
-              >
-                From Template(s)
-              </button>
-            </div>
-
-            {mode === 'blank' && (
-              <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={isTemplate}
-                  onChange={e => setIsTemplate(e.target.checked)}
-                  className="rounded"
-                />
-                Create as template
-              </label>
-            )}
-
-            {mode === 'from-templates' && (
+            {mode === 'list' && templates.length > 0 && (
               <div>
-                {templates.length === 0 ? (
-                  <p className="text-sm text-gray-400">No templates available. Create a template first.</p>
-                ) : (
-                  <div className="space-y-2 max-h-48 overflow-y-auto">
-                    {templates.map(tmpl => (
-                      <label
-                        key={tmpl.id}
-                        className="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-50 cursor-pointer text-sm"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={selectedIds.includes(tmpl.id)}
-                          onChange={() => toggleTemplate(tmpl.id)}
-                          className="rounded"
-                        />
-                        <span className="text-gray-700">{tmpl.name}</span>
-                        <span className="text-gray-400 text-xs ml-auto">{tmpl.total_items ?? 0} items</span>
-                      </label>
-                    ))}
-                  </div>
-                )}
+                <label className="block text-sm font-medium text-gray-600 mb-2">Initialize from templates</label>
+                <div className="space-y-1 max-h-48 overflow-y-auto">
+                  {templates.map(tmpl => (
+                    <label
+                      key={tmpl.id}
+                      className="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-50 cursor-pointer text-sm"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.includes(tmpl.id)}
+                        onChange={() => toggleTemplate(tmpl.id)}
+                        className="rounded"
+                      />
+                      <span className="text-gray-700">{tmpl.name}</span>
+                      <span className="text-gray-400 text-xs ml-auto">{tmpl.total_items ?? 0} items</span>
+                    </label>
+                  ))}
+                </div>
               </div>
             )}
           </div>
