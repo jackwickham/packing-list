@@ -6,9 +6,10 @@ interface Props {
   listId: number;
   categoryId: number;
   onAdd: () => void;
+  autoFocus?: boolean;
 }
 
-export default function AutocompleteInput({ listId, categoryId, onAdd }: Props) {
+export default function AutocompleteInput({ listId, categoryId, onAdd, autoFocus }: Props) {
   const [value, setValue] = useState('');
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
@@ -17,6 +18,12 @@ export default function AutocompleteInput({ listId, categoryId, onAdd }: Props) 
   const abortRef = useRef<AbortController>(undefined);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (autoFocus) {
+      inputRef.current?.focus();
+    }
+  }, [autoFocus]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {

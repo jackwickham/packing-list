@@ -41,6 +41,7 @@ export default function ListPage() {
   const titleRef = useRef<HTMLInputElement>(null);
   const actionsRef = useRef<HTMLDivElement>(null);
   const catInputRef = useRef<HTMLInputElement>(null);
+  const [focusCategoryId, setFocusCategoryId] = useState<number | null>(null);
   // Track original category before drag for cross-category moves
   const dragSourceCategory = useRef<number | null>(null);
   // Snapshot category order at drag start so layout stays stable
@@ -69,6 +70,11 @@ export default function ListPage() {
     }
   }, [listId]);
 
+  const handleItemAdded = useCallback(async (categoryId: number) => {
+    await fetchData();
+    setFocusCategoryId(categoryId);
+  }, [fetchData]);
+
   useEffect(() => {
     fetchData();
   }, [fetchData]);
@@ -93,6 +99,13 @@ export default function ListPage() {
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
   }, []);
+
+  // Clear focusCategoryId after it's been consumed
+  useEffect(() => {
+    if (focusCategoryId !== null) {
+      setFocusCategoryId(null);
+    }
+  }, [focusCategoryId]);
 
   // Clean up undo timer on unmount
   useEffect(() => {
@@ -581,8 +594,9 @@ export default function ListPage() {
                 category={cat}
                 items={uncheckedByCategory.get(cat.id) || []}
                 listId={listId}
-                onUpdate={fetchData}
+                onUpdate={() => handleItemAdded(cat.id)}
                 onItemChecked={handleItemChecked}
+                autoFocusInput={focusCategoryId === cat.id}
               />
             ))}
             {emptyCategories.length > 0 && (
@@ -596,8 +610,9 @@ export default function ListPage() {
                     category={cat}
                     items={[]}
                     listId={listId}
-                    onUpdate={fetchData}
+                    onUpdate={() => handleItemAdded(cat.id)}
                     onItemChecked={handleItemChecked}
+                    autoFocusInput={focusCategoryId === cat.id}
                   />
                 ))}
               </details>
