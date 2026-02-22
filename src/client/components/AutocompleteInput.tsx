@@ -112,6 +112,7 @@ export default function AutocompleteInput({ listId, categoryId, onAdd, autoFocus
         onKeyDown={handleKeyDown}
         onFocus={() => { if (suggestions.length > 0) setShowDropdown(true); }}
         placeholder="Add item..."
+        autoCapitalize="sentences"
         className="w-full text-base border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/40 bg-gray-50"
       />
 

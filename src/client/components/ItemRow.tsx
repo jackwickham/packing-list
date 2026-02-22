@@ -127,6 +127,7 @@ export default function ItemRow({ item, onUpdate, onChecked, isDraggable = false
           onChange={e => setTextDraft(e.target.value)}
           onBlur={handleSave}
           onKeyDown={handleKeyDown}
+          autoCapitalize="sentences"
           className="flex-1 text-base border border-gray-300 rounded px-2 py-0.5 focus:outline-none focus:ring-1 focus:ring-primary/30"
         />
       ) : (
