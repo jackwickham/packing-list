@@ -9,13 +9,14 @@ interface Props {
   items: Item[];
   listId: number;
   onUpdate: () => void;
+  onAdd?: () => void;
   onItemChecked?: (itemId: number) => void;
   hideAddInput?: boolean;
   isDragActive?: boolean;
   autoFocusInput?: boolean;
 }
 
-export default function CategorySection({ category, items, listId, onUpdate, onItemChecked, hideAddInput, isDragActive, autoFocusInput }: Props) {
+export default function CategorySection({ category, items, listId, onUpdate, onAdd, onItemChecked, hideAddInput, isDragActive, autoFocusInput }: Props) {
   const { setNodeRef } = useDroppable({
     id: `category-${category.id}`,
   });
@@ -49,7 +50,7 @@ export default function CategorySection({ category, items, listId, onUpdate, onI
         )}
       </div>
       {!hideAddInput && (
-        <AutocompleteInput listId={listId} categoryId={category.id} onAdd={onUpdate} autoFocus={autoFocusInput} />
+        <AutocompleteInput listId={listId} categoryId={category.id} onAdd={onAdd || onUpdate} autoFocus={autoFocusInput} />
       )}
     </div>
   );

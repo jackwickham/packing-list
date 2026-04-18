@@ -594,7 +594,8 @@ export default function ListPage() {
                 category={cat}
                 items={uncheckedByCategory.get(cat.id) || []}
                 listId={listId}
-                onUpdate={() => handleItemAdded(cat.id)}
+                onUpdate={fetchData}
+                onAdd={() => handleItemAdded(cat.id)}
                 onItemChecked={handleItemChecked}
                 autoFocusInput={focusCategoryId === cat.id}
               />
@@ -610,7 +611,8 @@ export default function ListPage() {
                     category={cat}
                     items={[]}
                     listId={listId}
-                    onUpdate={() => handleItemAdded(cat.id)}
+                    onUpdate={fetchData}
+                    onAdd={() => handleItemAdded(cat.id)}
                     onItemChecked={handleItemChecked}
                     autoFocusInput={focusCategoryId === cat.id}
                   />
