@@ -16,7 +16,7 @@
     "@dnd-kit/utilities": "^3.2.2",
     "better-sqlite3": "^12.9.0",
     "express": "^5.1.0",
-    "yaml": "^2.8.3"
+    "yaml": "^2.8.4"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.2.4",
