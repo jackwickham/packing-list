@@ -28,7 +28,7 @@
     "@vitejs/plugin-react": "^6.0.2",
     "concurrently": "^10.0.0",
     "react": "^19.0.0",
-    "react-dom": "^19.2.6",
+    "react-dom": "^19.2.7",
     "react-router": "^7.16.0",
     "tailwindcss": "^4.3.0",
     "tsup": "^8.5.0",
