@@ -76,6 +76,10 @@ export default function ListPage() {
   }, [fetchData]);
 
   useEffect(() => {
+    // Clear stale data when switching lists (e.g. after duplicating) so the
+    // previous list's content isn't shown under the new URL while it loads.
+    setList(null);
+    setNotFound(false);
     fetchData();
   }, [fetchData]);
 
